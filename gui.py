@@ -4,6 +4,8 @@ from tkinter import messagebox
 from PIL import ImageTk, Image
 import pandas as pd
 
+import cleaner # Import the cleaner.py file
+
 # Set up the GUI
 root = tk.Tk()
 root.title("Clean Coalition CSV Tool")
@@ -22,6 +24,10 @@ logo = ImageTk.PhotoImage(logo_image)
 logo_label = tk.Label(root, image=logo, bg="#0072C6")
 logo_label.grid(row=0, column=0, padx=10, pady=10, columnspan=2)
 
+# Function to show info about the program
+def show_info():
+    messagebox.showinfo("Clean Coalition CSV Tool", "This program cleans and exports UtilityAPI CSV files with date/time discrepancies typically occurring during daylight savings.\n\nPlease select a CSV file to upload \n\nThe program will clean it up and export the cleaned data.\n\n© 2023 Clean Coalition. All rights reserved.")
+
 # Function to upload CSV file
 def upload_file():
     file_path = filedialog.askopenfilename()
@@ -34,39 +40,49 @@ def save_file(df):
     file_path = filedialog.asksaveasfilename(defaultextension=".csv")
     if file_path:
         df.to_csv(file_path, index=False)
-        messagebox.showinfo("Export Complete", "Data cleaned and saved successfully!")
+        messagebox.showinfo(title="Export Complete", message="Data cleaned and saved successfully!")
         
 # Function to process CSV data
 def process_data(df):
     # Replace NaN values with 0
     df.fillna(0, inplace=True)
     
-    # Perform some other cleaning tasks...
+    # Create a new Toplevel window for the loading state
+    loading_window = tk.Toplevel(root)
+    loading_window.title("Processing Data")
+    loading_window.geometry("250x100")
+    loading_label = tk.Label(loading_window, text="Processing data, please wait...", font=("Arial", 12))
+    loading_label.pack(pady=20)
+    loading_window.update()  # Force update to display loading window
     
-    # Display results
+    # Use the cleaner module to clean the data
+    df = cleaner.create_clean_dataframe(df)
+    
+    # Destroy the loading window and display the results
+    loading_window.destroy()
     save_button = tk.Button(root, text="Export Cleaned Data", command=lambda: save_file(df), font=("Arial", 16), bg="#FFFFFF")
     save_button.grid(row=3, column=0, pady=10, padx=10, columnspan=2)
     result_label = tk.Label(root, text="Data processed!", font=("Arial", 16), bg="#0072C6", fg="#FFFFFF")
     result_label.grid(row=2, column=1, pady=10)
 
+
+
+
 # Add Upload CSV button
 upload_button = tk.Button(root, text="Upload CSV", command=upload_file, font=("Arial", 16), bg="#FFFFFF")
-upload_button.grid(row=1, column=0, pady=10, padx=10, columnspan=2)
+upload_button.grid(row=2, column=1)
 
 # Center the Upload CSV button under the logo
 logo_label.grid_rowconfigure(1, weight=1)
 upload_button.grid(row=2, column=0, pady=10, columnspan=2)
 
-# Add info button
-def show_info():
-    messagebox.showinfo("Clean Coalition CSV Tool", "This program cleans and exports UtilityAPI CSV files with date/time discrepancies typically occurring during daylight savings.\n\nPlease select a CSV file to upload \n\nThe program will clean it up and export the cleaned data.\n\n© 2023 Clean Coalition. All rights reserved.")
-
-info_button = tk.Button(root, text="About", command=show_info, font=("Arial", 16), bg="#FFFFFF")
-info_button.grid(row=1, column=0, pady=10, padx=10, sticky="e")
-
 # Add copyright text
 copyright_label = tk.Label(root, text="© 2023 Clean Coalition. All rights reserved.", font=("Arial", 10), bg="#0072C6", fg="#FFFFFF")
-copyright_label.grid(row=5, column=0, columnspan=2)
+copyright_label.grid(row=7, column=0, columnspan=1)
+
+# Add info button
+info_button = tk.Button(root, text="About", command=show_info, font=("Arial", 16), bg="#FFFFFF")
+info_button.grid(row=7, column=1, columnspan=1, pady=10)
 
 # Center the logo, button, and copyright on the page
 root.grid_rowconfigure(0, weight=1)
