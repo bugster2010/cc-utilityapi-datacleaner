@@ -3,6 +3,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from PIL import ImageTk, Image
 import pandas as pd
+import os
 
 import cleaner # Import the cleaner.py file
 
@@ -12,6 +13,9 @@ root.title("Clean Coalition CSV Tool")
 root.geometry("500x600")
 root.configure(bg="#0072C6")
 root.resizable(False, False)
+
+file_label = None
+
 
 # Add Clean Coalition logo and name
 logo_image = Image.open("clean_coalition_logo.png")
@@ -30,7 +34,17 @@ def show_info():
 
 # Function to upload CSV file
 def upload_file():
+    global file_label
+
     file_path = filedialog.askopenfilename()
+
+    # Check if there's a previous label and destroy it if it exists
+    if file_label:
+        file_label.destroy()
+
+    file_label = tk.Label(root, text='file: ' + os.path.basename(file_path), font=("Arial", 16), bg="#0072C6", fg="#FFFFFF")
+    file_label.grid(row=5, column=0)
+    file_label.update() 
     if file_path:
         df = pd.read_csv(file_path)
         process_data(df)
@@ -62,8 +76,8 @@ def process_data(df):
     loading_window.destroy()
     save_button = tk.Button(root, text="Export Cleaned Data", command=lambda: save_file(df), font=("Arial", 16), bg="#FFFFFF")
     save_button.grid(row=3, column=0, pady=10, padx=10, columnspan=2)
-    result_label = tk.Label(root, text="Data processed!", font=("Arial", 16), bg="#0072C6", fg="#FFFFFF")
-    result_label.grid(row=2, column=1, pady=10)
+    # result_label = tk.Label(root, text="Data processed!", font=("Arial", 16), bg="#0072C6", fg="#FFFFFF")
+    # result_label.grid(row=2, column=1)
 
 
 
