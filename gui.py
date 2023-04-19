@@ -40,6 +40,8 @@ logo_label.grid(row=0, column=0, padx=10, pady=10, columnspan=2)
 def show_info():
     messagebox.showinfo("Clean Coalition CSV Tool", "This program cleans and exports UtilityAPI CSV files with date/time discrepancies typically occurring during daylight savings.\n\nPlease select a CSV file to upload \n\nThe program will clean it up and export the cleaned data.\n\n© 2023 Clean Coalition. All rights reserved.")
 
+def limit_string(s, max_length=20):
+    return s[:max_length] + "..." if len(s) > max_length else s
 
 # Function to upload CSV file
 def upload_file():
@@ -51,8 +53,8 @@ def upload_file():
     if file_label:
         file_label.destroy()
 
-    file_label = tk.Label(root, text='file: ' + os.path.basename(file_path), font=("Arial", 16), bg="#0072C6", fg="#FFFFFF")
-    file_label.grid(row=3, column=0, sticky='W', padx=10)
+    file_label = tk.Label(root, text='file: ' + limit_string(os.path.basename(file_path)), font=("Arial", 16), bg="#0072C6", fg="#FFFFFF")
+    file_label.grid(row=6, column=0, sticky='W', padx=10)
     file_label.update()
     if file_path:
         df = pd.read_csv(file_path)
