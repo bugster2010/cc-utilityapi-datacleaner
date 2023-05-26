@@ -51,7 +51,7 @@ def moduleInterface():
             st.download_button(
                 label="Download data as CSV",
                 data=clean_file,
-                file_name='large_df.csv',
+                file_name='clean_' + selected_file.name,
                 mime='text/csv',
             )
 
