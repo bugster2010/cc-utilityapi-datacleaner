@@ -20,8 +20,8 @@ def moduleInterface():
     clean_file = None
     image = Image.open('assets/logo.png')
 
-    st.image(image)
-    st.title("UtilityAPI Cleaner")
+    st.image(image, width=700)
+    st.title("UtilityAPI Data Cleaner")
     
 
     inputColumn, outputColumn = st.columns(2)
