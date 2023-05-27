@@ -1,13 +1,13 @@
-from PIL import ImageTk, Image
+from PIL import Image
 import pandas as pd
 import os
 import sys
 
 from clean import *
 import streamlit as st
-import shutil
-from tkinter import Tk, filedialog
-from pathlib import Path
+# import shutil
+# from tkinter import Tk, filedialog
+# from pathlib import Path
 
 def main():
     moduleInterface()
