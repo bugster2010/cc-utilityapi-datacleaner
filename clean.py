@@ -143,7 +143,7 @@ def testScript():
     data = removeDiscrepencies(data)
     data.to_csv("assets/csv/testfile.csv")
 
-def runCleaner(file, reverse):
+def runCleaner(file):
     data = pd.read_csv(file)
     data = removeDiscrepencies(data)
 
@@ -152,8 +152,8 @@ def runCleaner(file, reverse):
     if(not verifyData(data)):
         raise DataCleaningError('Data not Properly Cleaned')
 
-    if(reverse):
-        data = reverseDF(data)
+    #if(reverse):
+    #    data = reverseDF(data)
 
 
     cleanData = data.to_csv(index=False)

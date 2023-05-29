@@ -31,13 +31,13 @@ def moduleInterface():
         selected_file = st.file_uploader("Upload a file")
 
 
-        reverse = st.checkbox("Reverse Data", value=False)
+        #reverse = st.checkbox("Reverse Data", value=False)
             # Button to start cleaning program
         if st.button("Clean Data"):
             if selected_file is None:
                   st.error("Please select an input file.")
             else:
-                 clean_file = runCleaner(selected_file, reverse)
+                 clean_file = runCleaner(selected_file)
                  
                  st.success("File Cleaned Successfully")
         
