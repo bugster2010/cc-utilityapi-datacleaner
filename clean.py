@@ -22,6 +22,7 @@ def removeDiscrepencies(df):
     
     df = reverseDF(df)
 
+    df = makeCalendarYear(df, 'interval_start')
     # Convert the 'interval_start' and 'interval_end' columns to datetime objects
     df['interval_start'] = pd.to_datetime(df['interval_start'], format='%m/%d/%Y %H:%M', errors='coerce')
     df['interval_end'] = pd.to_datetime(df['interval_end'], format='%m/%d/%Y %H:%M', errors='coerce')
@@ -35,8 +36,9 @@ def removeDiscrepencies(df):
     currHighestTime = datetime(year=1,month=1,day=1,hour=0,minute=0,second=0)
     
     flag = 0
-    for index, row in df.iterrows():
 
+    df.reset_index()
+    for index, row in df.iterrows():
         prev = index - 1
         cleanRow = row
         
@@ -52,13 +54,18 @@ def removeDiscrepencies(df):
             print()
             
             
-        
+        currHighestTest = cleanRow['interval_start']
+        currHighestTest = currHighestTest.replace(year = 2000)
+
         #validate there is no repeat
-        if(cleanRow['interval_start'] < currHighestTime):
+        if(currHighestTest < currHighestTime):
             #this effectively skips anything that starts before what we have already deemed has ended 
+            print(currHighestTest, ' was skipped')
             continue
 
         currHighestTime = cleanRow['interval_end']
+        currHighestTime = currHighestTime.replace(year = 2000)
+
 
         #validate all times exist
         if(len(cleanDF)>= 1):
@@ -69,13 +76,13 @@ def removeDiscrepencies(df):
                 #inverted due to reversed indexing
                 if(0<= (index - entries_per_week) <= len(df.index)):
 
-                    copyInd = index + entries_per_week + 1
+                    copyInd = index - entries_per_week
                     print("Fetching Week Prior")
 
                 else:
 
                     print("Fetching Week Forward")
-                    copyInd = index - entries_per_week + 1
+                    copyInd = index + entries_per_week
                 
                 
                 copyIntervalStart = cleanDF[-1].interval_end
@@ -87,9 +94,9 @@ def removeDiscrepencies(df):
                     
                     
                     
-                    copy_curr = df.loc[copyInd].copy()
+                    copy_curr = df.iloc[copyInd].copy()
 
-                    print("Copied data from:", df.loc[copyInd].interval_start, df.loc[copyInd].interval_end)
+                    print("Copied data from:", df.iloc[copyInd].interval_start, df.iloc[copyInd].interval_end)
                     copy_curr.interval_start = copyIntervalStart.strftime('%m/%d/%Y %H:%M')
                     copy_curr.interval_end = (copyIntervalStart + timedelta(minutes = 15)).strftime('%m/%d/%Y %H:%M')
                 
@@ -159,6 +166,19 @@ def runCleaner(file):
     cleanData = data.to_csv(index=False)
 
     return cleanData
+
+
+def makeCalendarYear(df, dateColumn):
+    
+    df['sortingColumn'] = pd.to_datetime(df[dateColumn], format='%m/%d/%Y %H:%M', errors='coerce')
+    df['newSortingColumn'] = df['sortingColumn'].dt.strftime('%m/%d %H:%M')
+
+    df = df.sort_values(by='newSortingColumn')
+
+    df = df.drop('sortingColumn', axis=1)
+    df = df.drop('newSortingColumn', axis=1)
+
+    return df
 
 
 
