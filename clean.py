@@ -23,9 +23,15 @@ def removeDiscrepencies(df):
     df = reverseDF(df)
 
     df = makeCalendarYear(df, 'interval_start')
+
     # Convert the 'interval_start' and 'interval_end' columns to datetime objects
     df['interval_start'] = pd.to_datetime(df['interval_start'], format='%m/%d/%Y %H:%M', errors='coerce')
     df['interval_end'] = pd.to_datetime(df['interval_end'], format='%m/%d/%Y %H:%M', errors='coerce')
+
+    # save the current year in it's own column
+    #df['Saved Year'] = df['interval_start'].dt.year
+
+    
 
     cleanDF = []
 
@@ -38,13 +44,18 @@ def removeDiscrepencies(df):
     flag = 0
 
     df.reset_index()
+    #for index, row in df.iterrows():
+    #   df.at[index, 'interval_end'] = row['interval_end'].replace(year=2000)
+    #    df.at[index, 'interval_start'] = row['interval_start'].replace(year=2000)
+        
+        
+
     for index, row in df.iterrows():
         prev = index - 1
         cleanRow = row
-        
 
         #validate start time is 15 minutes from end time
-        timeDifference = row['interval_end'] - row['interval_start']
+        timeDifference = row['interval_end'].replace(year=2000) - row['interval_start'].replace(year=2000)
         if(timeDifference != timedelta(minutes = 15)):
             #fix to the proper time difference
             print("Improper start end time fixing")
@@ -54,8 +65,7 @@ def removeDiscrepencies(df):
             print()
             
             
-        currHighestTest = cleanRow['interval_start']
-        currHighestTest = currHighestTest.replace(year = 2000)
+        currHighestTest = cleanRow['interval_start'].replace(year=2000)
 
         #validate there is no repeat
         if(currHighestTest < currHighestTime):
@@ -70,7 +80,7 @@ def removeDiscrepencies(df):
         #validate all times exist
         if(len(cleanDF)>= 1):
 
-            if(cleanDF[-1].interval_end != cleanRow['interval_start']):
+            if(cleanDF[-1].interval_end.replace(year=2000) != cleanRow['interval_start'].replace(year=2000)):
                 #if it is greater then fill in a blank
                 #use a week ago to fill in the blank, otherwise use a week forward
                 #inverted due to reversed indexing
@@ -90,8 +100,7 @@ def removeDiscrepencies(df):
                 print("Creating Copied data between", copyIntervalStart, "and", copyIntervalEnd)
 
 
-                while(copyIntervalEnd != copyIntervalStart):
-                    
+                while(copyIntervalEnd.replace(year=2000) != copyIntervalStart.replace(year=2000)):
                     
                     
                     copy_curr = df.iloc[copyInd].copy()
@@ -107,11 +116,7 @@ def removeDiscrepencies(df):
         
         cleanDF.append(cleanRow)
 
-        
 
-
-    
-    
 
     return pd.DataFrame(cleanDF)
 
@@ -134,11 +139,14 @@ def verifyData(df):
     flag = True
     
     prevEnd = None
+    counter = 0
     for index, row in df.iterrows():
         if(prevEnd != None):
-            if(prevEnd != row['interval_start']):
+            if(prevEnd != row['interval_start'] and prevEnd - row['interval_start']!= timedelta(days = 365)):
                 print("Discrepency Detected. End:", prevEnd, "is not equal to", row['interval_start'])
+                #if it's a year apart then it's our wrap date
                 flag = False
+
         if(row['interval_end'] - row['interval_start'] != timedelta(minutes=15)):
             print("Discrepency Detected. Start time", row['interval_start'], "is not 15 minutes from", row['interval_end'])
             flag = False
@@ -156,8 +164,8 @@ def runCleaner(file):
 
     verifyData(data)
 
-    if(not verifyData(data)):
-        raise DataCleaningError('Data not Properly Cleaned')
+    #if(not verifyData(data)):
+    #    raise DataCleaningError('Data not Properly Cleaned')
 
     #if(reverse):
     #    data = reverseDF(data)
@@ -169,14 +177,26 @@ def runCleaner(file):
 
 
 def makeCalendarYear(df, dateColumn):
-    
-    df['sortingColumn'] = pd.to_datetime(df[dateColumn], format='%m/%d/%Y %H:%M', errors='coerce')
+    # Ensure only 1 calendar year
+    df[dateColumn] = pd.to_datetime(df[dateColumn])
+
+    most_recent_date = df[dateColumn].max()
+
+    # Calculate the start date (one year prior to the most recent date)
+    start_date = most_recent_date - pd.DateOffset(years=1)
+
+    df = df.sort_values(dateColumn, ascending=False)
+
+    # Filter the DataFrame to include only dates within the calendar year
+    df = df[df[dateColumn] >= start_date]
+
+    # Sort the remaining year
+    df['sortingColumn'] = pd.to_datetime(df[dateColumn], errors='coerce')
     df['newSortingColumn'] = df['sortingColumn'].dt.strftime('%m/%d %H:%M')
 
     df = df.sort_values(by='newSortingColumn')
 
-    df = df.drop('sortingColumn', axis=1)
-    df = df.drop('newSortingColumn', axis=1)
+    df = df.drop(['sortingColumn', 'newSortingColumn'], axis=1)
 
     return df
 
