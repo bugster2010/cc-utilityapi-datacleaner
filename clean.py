@@ -162,10 +162,8 @@ def runCleaner(file):
     data = pd.read_csv(file)
     data = removeDiscrepencies(data)
 
-    verifyData(data)
-
-    #if(not verifyData(data)):
-    #    raise DataCleaningError('Data not Properly Cleaned')
+    if(not verifyData(data)):
+        raise DataCleaningError('Data not Properly Cleaned')
 
     #if(reverse):
     #    data = reverseDF(data)
