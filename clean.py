@@ -28,9 +28,6 @@ def removeDiscrepencies(df):
     df['interval_start'] = pd.to_datetime(df['interval_start'], format='%m/%d/%Y %H:%M', errors='coerce')
     df['interval_end'] = pd.to_datetime(df['interval_end'], format='%m/%d/%Y %H:%M', errors='coerce')
 
-    # save the current year in it's own column
-    #df['Saved Year'] = df['interval_start'].dt.year
-
     
 
     cleanDF = []
@@ -44,9 +41,7 @@ def removeDiscrepencies(df):
     flag = 0
 
     df.reset_index()
-    #for index, row in df.iterrows():
-    #   df.at[index, 'interval_end'] = row['interval_end'].replace(year=2000)
-    #    df.at[index, 'interval_start'] = row['interval_start'].replace(year=2000)
+    
         
         
 
@@ -86,13 +81,13 @@ def removeDiscrepencies(df):
                 #inverted due to reversed indexing
                 if(0<= (index - entries_per_week) <= len(df.index)):
 
-                    copyInd = index - entries_per_week
+                    copyInd = index - entries_per_week + 1
                     print("Fetching Week Prior")
 
                 else:
 
                     print("Fetching Week Forward")
-                    copyInd = index + entries_per_week
+                    copyInd = index + entries_per_week + 1
                 
                 
                 copyIntervalStart = cleanDF[-1].interval_end
@@ -103,9 +98,9 @@ def removeDiscrepencies(df):
                 while(copyIntervalEnd.replace(year=2000) != copyIntervalStart.replace(year=2000)):
                     
                     
-                    copy_curr = df.iloc[copyInd].copy()
+                    copy_curr = df.loc[copyInd].copy()
 
-                    print("Copied data from:", df.iloc[copyInd].interval_start, df.iloc[copyInd].interval_end)
+                    print("Copied data from:", df.loc[copyInd].interval_start, df.loc[copyInd].interval_end)
                     copy_curr.interval_start = copyIntervalStart.strftime('%m/%d/%Y %H:%M')
                     copy_curr.interval_end = (copyIntervalStart + timedelta(minutes = 15)).strftime('%m/%d/%Y %H:%M')
                 
@@ -114,8 +109,10 @@ def removeDiscrepencies(df):
                     copyInd += 1
                     
         
-        cleanDF.append(cleanRow)
 
+        cleanDF.append(cleanRow)
+    
+    df = removeZeroVals(df)
 
 
     return pd.DataFrame(cleanDF)
@@ -199,5 +196,35 @@ def makeCalendarYear(df, dateColumn):
     return df
 
 
+def removeZeroVals(df):
 
-#idea for calendar fixing, reimplement indexing using pandas drop index. Will have to reimplement the week copying method if we do that
+    currIndex = 0
+    copyIndex = -1
+
+    df.reset_index()
+    for index, row in df.iterrows():
+        
+        currIndex = 0
+        if(currIndex < entries_per_week):
+            copyIndex = index + entries_per_week
+
+        else:
+            copyIndex = index - entries_per_week
+
+        if(row['interval_kWh'] == 0 and row['fwd_kWh'] == 0 and row['net_kWh'] == 0):
+
+            #this is for edge cases looking forward before the zeroes have been removed, if it is a zero a week ahead it jumps another week forward
+            while(df.loc[copyIndex].interval_kWh == 0 and df.loc[copyIndex].fwd_kWh == 0 and df.loc[copyIndex].net_kWh == 0):
+                print("Edge case in removing zero values. Jumping forward an extra week for data fetching")
+                copyIndex = copyIndex + entries_per_week
+
+            print("Zero detected, copying from start time:", df.loc[copyIndex].interval_start, "for: ", row['interval_start'])
+            df.at[index, 'interval_kWh'] = df.loc[copyIndex].interval_kWh
+            df.at[index, 'fwd_kWh'] = df.loc[copyIndex].fwd_kWh
+            df.at[index, 'net_kWh'] = df.loc[copyIndex].net_kWh
+
+        currIndex = currIndex + 1
+
+    return df
+
+
