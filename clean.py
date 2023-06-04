@@ -44,7 +44,7 @@ def removeDiscrepencies(df):
     
         
         
-
+    print("Removing time discrepencies")
     for index, row in df.iterrows():
         prev = index - 1
         cleanRow = row
@@ -111,11 +111,15 @@ def removeDiscrepencies(df):
         
 
         cleanDF.append(cleanRow)
-    
-    df = removeZeroVals(df)
+    print("Completed time corrections")
+
+    print()
+    print("Beginning Removing Zero Values")
+    cleanDF = removeZeroVals(pd.DataFrame(cleanDF))
+    print("Completed")
 
 
-    return pd.DataFrame(cleanDF)
+    return cleanDF
 
 
 
@@ -138,6 +142,9 @@ def verifyData(df):
     prevEnd = None
     counter = 0
     for index, row in df.iterrows():
+        if(row['interval_kWh'] == 0 and row['fwd_kWh'] == 0 and row['net_kWh'] == 0):
+            print("Zero Discrepency Detected at start time: ", row['interval_start'])
+            flag = False
         if(prevEnd != None):
             if(prevEnd != row['interval_start'] and prevEnd - row['interval_start']!= timedelta(days = 365)):
                 print("Discrepency Detected. End:", prevEnd, "is not equal to", row['interval_start'])
@@ -204,7 +211,6 @@ def removeZeroVals(df):
     df.reset_index()
     for index, row in df.iterrows():
         
-        currIndex = 0
         if(currIndex < entries_per_week):
             copyIndex = index + entries_per_week
 
