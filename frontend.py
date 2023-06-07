@@ -30,6 +30,7 @@ def moduleInterface():
         st.header("Select Input CSV")
         selected_file = st.file_uploader("Upload a file")
 
+        annual = st.checkbox('Annual Data')
 
         #reverse = st.checkbox("Reverse Data", value=False)
             # Button to start cleaning program
@@ -37,7 +38,7 @@ def moduleInterface():
             if selected_file is None:
                   st.error("Please select an input file.")
             else:
-                 clean_file = runCleaner(selected_file)
+                 clean_file = runCleaner(selected_file, annual)
                  
                  st.success("File Cleaned Successfully")
         

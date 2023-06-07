@@ -10,7 +10,7 @@ testfile = "assets/csv/raw.csv"
 class DataCleaningError(Exception):
     pass
 
-def removeDiscrepencies(df):
+def removeDiscrepencies(df, annual):
 
     # Check for missing column names, throw error if any are missing
     required_columns = ['interval_start', 'interval_end']
@@ -22,7 +22,8 @@ def removeDiscrepencies(df):
     
     df = reverseDF(df)
 
-    df = makeCalendarYear(df, 'interval_start')
+    if(annual):
+        df = makeCalendarYear(df, 'interval_start')
 
     # Convert the 'interval_start' and 'interval_end' columns to datetime objects
     df['interval_start'] = pd.to_datetime(df['interval_start'], format='%m/%d/%Y %H:%M', errors='coerce')
@@ -37,8 +38,6 @@ def removeDiscrepencies(df):
     #index is given the int of the index and row is the data
     #set the lowest time possible
     currHighestTime = datetime(year=1,month=1,day=1,hour=0,minute=0,second=0)
-    
-    flag = 0
 
     df.reset_index()
     
@@ -50,7 +49,10 @@ def removeDiscrepencies(df):
         cleanRow = row
 
         #validate start time is 15 minutes from end time
-        timeDifference = row['interval_end'].replace(year=2000) - row['interval_start'].replace(year=2000)
+        if(annual):
+            timeDifference = row['interval_end'].replace(year=2000) - row['interval_start'].replace(year=2000)
+        else:
+            timeDifference = row['interval_end'] - row['interval_start']
         if(timeDifference != timedelta(minutes = 15)):
             #fix to the proper time difference
             print("Improper start end time fixing")
@@ -59,9 +61,11 @@ def removeDiscrepencies(df):
             print("Correction:", cleanRow['interval_start'], cleanRow['interval_end'])
             print()
             
+        if(annual):
+            currHighestTest = cleanRow['interval_start'].replace(year=2000)
+        else:
+            currHighestTest = cleanRow['interval_start']
             
-        currHighestTest = cleanRow['interval_start'].replace(year=2000)
-
         #validate there is no repeat
         if(currHighestTest < currHighestTime):
             #this effectively skips anything that starts before what we have already deemed has ended 
@@ -69,13 +73,20 @@ def removeDiscrepencies(df):
             continue
 
         currHighestTime = cleanRow['interval_end']
-        currHighestTime = currHighestTime.replace(year = 2000)
+
+        if(annual):
+            currHighestTime = currHighestTime.replace(year = 2000)
 
 
         #validate all times exist
         if(len(cleanDF)>= 1):
 
-            if(cleanDF[-1].interval_end.replace(year=2000) != cleanRow['interval_start'].replace(year=2000)):
+            if(annual):
+                verifyTimeBool = cleanDF[-1].interval_end.replace(year=2000) != cleanRow['interval_start'].replace(year=2000)
+            else:
+                verifyTimeBool = cleanDF[-1].interval_end != cleanRow['interval_start']
+            
+            if(verifyTimeBool):
                 #if it is greater then fill in a blank
                 #use a week ago to fill in the blank, otherwise use a week forward
                 #inverted due to reversed indexing
@@ -94,9 +105,12 @@ def removeDiscrepencies(df):
                 copyIntervalEnd = row['interval_start']
                 print("Creating Copied data between", copyIntervalStart, "and", copyIntervalEnd)
 
+                if(annual):
+                    intervalWhileClause = copyIntervalEnd.replace(year=2000) != copyIntervalStart.replace(year=2000)
+                else:
+                    intervalWhileClause = copyIntervalEnd != copyIntervalStart
 
-                while(copyIntervalEnd.replace(year=2000) != copyIntervalStart.replace(year=2000)):
-                    
+                while(intervalWhileClause):
                     
                     copy_curr = df.loc[copyInd].copy()
 
@@ -107,6 +121,11 @@ def removeDiscrepencies(df):
                     copyIntervalStart += timedelta(minutes=15)
                     cleanDF.append(copy_curr)
                     copyInd += 1
+
+                    if(annual):
+                        intervalWhileClause = copyIntervalEnd.replace(year=2000) != copyIntervalStart.replace(year=2000)
+                    else:
+                        intervalWhileClause = copyIntervalEnd != copyIntervalStart
                     
         
 
@@ -162,9 +181,9 @@ def testScript():
     data = removeDiscrepencies(data)
     data.to_csv("assets/csv/testfile.csv")
 
-def runCleaner(file):
+def runCleaner(file, annual):
     data = pd.read_csv(file)
-    data = removeDiscrepencies(data)
+    data = removeDiscrepencies(data, annual)
 
     if(not verifyData(data)):
         raise DataCleaningError('Data not Properly Cleaned')
@@ -208,7 +227,7 @@ def removeZeroVals(df):
     currIndex = 0
     copyIndex = -1
 
-    df.reset_index()
+    df = df.reset_index()
     for index, row in df.iterrows():
         
         if(currIndex < entries_per_week):
