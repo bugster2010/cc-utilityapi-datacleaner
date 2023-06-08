@@ -73,7 +73,7 @@ def removeDiscrepencies(df, annual):
             #this effectively skips anything that starts before what we have already deemed has ended 
             print(currHighestTest, ' was skipped')
             skipped = skipped + 1
-            if(skipped > error_max):
+            if(skipped > created_error_max):
                 raise DataCleaningError('Skipped data has breached the cleaning error maximum')
             continue
 
