@@ -5,6 +5,9 @@ from datetime import timedelta
 # 1 week of 15 min interval
 entries_per_week = 672 
 
+# allowed amount of created data. Should expect about 4 per year
+created_error_max = 16
+
 testfile = "assets/csv/raw.csv"
 
 class DataCleaningError(Exception):
@@ -13,15 +16,14 @@ class DataCleaningError(Exception):
 def removeDiscrepencies(df, annual):
 
     # Check for missing column names, throw error if any are missing
-    required_columns = ['interval_start', 'interval_end']
+    required_columns = ['interval_start', 'interval_end', 'interval_kWh', 'fwd_kWh', 'net_kWh']
     missing_columns = set(required_columns) - set(df.columns)
     
     if missing_columns:
         raise DataCleaningError('Missing columns: {}'.format(', '.join(missing_columns)))
-
     
+    #preparing data for cleaning
     df = reverseDF(df)
-
     if(annual):
         df = makeCalendarYear(df, 'interval_start')
 
@@ -30,19 +32,18 @@ def removeDiscrepencies(df, annual):
     df['interval_end'] = pd.to_datetime(df['interval_end'], format='%m/%d/%Y %H:%M', errors='coerce')
 
     
-
+    #new dataframe we will create and return
     cleanDF = []
 
 
-    #begin for loop for iteration through data
-    #index is given the int of the index and row is the data
-    #set the lowest time possible
+    
+    #setting data
     currHighestTime = datetime(year=1,month=1,day=1,hour=0,minute=0,second=0)
-
     df.reset_index()
     
         
-        
+    #begin for loop for iteration through data
+    #index is given the int of the index and row is the data
     print("Removing time discrepencies")
     for index, row in df.iterrows():
         prev = index - 1
@@ -65,11 +66,15 @@ def removeDiscrepencies(df, annual):
             currHighestTest = cleanRow['interval_start'].replace(year=2000)
         else:
             currHighestTest = cleanRow['interval_start']
-            
+
+        skipped = 0
         #validate there is no repeat
         if(currHighestTest < currHighestTime):
             #this effectively skips anything that starts before what we have already deemed has ended 
             print(currHighestTest, ' was skipped')
+            skipped = skipped + 1
+            if(skipped > error_max):
+                raise DataCleaningError('Skipped data has breached the cleaning error maximum')
             continue
 
         currHighestTime = cleanRow['interval_end']
@@ -105,10 +110,14 @@ def removeDiscrepencies(df, annual):
                 copyIntervalEnd = row['interval_start']
                 print("Creating Copied data between", copyIntervalStart, "and", copyIntervalEnd)
 
+                #used as a dual clause for the while loop
                 if(annual):
                     intervalWhileClause = copyIntervalEnd.replace(year=2000) != copyIntervalStart.replace(year=2000)
                 else:
                     intervalWhileClause = copyIntervalEnd != copyIntervalStart
+
+                #used for error checking purposes
+                intervalsCopied = 0
 
                 while(intervalWhileClause):
                     
@@ -121,6 +130,11 @@ def removeDiscrepencies(df, annual):
                     copyIntervalStart += timedelta(minutes=15)
                     cleanDF.append(copy_curr)
                     copyInd += 1
+
+                    intervalsCopied = intervalsCopied + 1
+
+                    if(intervalsCopied > created_error_max):
+                        raise DataCleaningError('Maximum created data reached. Check that you have sufficient data if annual is selected')
 
                     if(annual):
                         intervalWhileClause = copyIntervalEnd.replace(year=2000) != copyIntervalStart.replace(year=2000)
@@ -166,7 +180,9 @@ def verifyData(df):
             flag = False
         if(prevEnd != None):
             if(prevEnd != row['interval_start'] and prevEnd - row['interval_start']!= timedelta(days = 365)):
+
                 print("Discrepency Detected. End:", prevEnd, "is not equal to", row['interval_start'])
+
                 #if it's a year apart then it's our wrap date
                 flag = False
 
@@ -176,11 +192,13 @@ def verifyData(df):
         prevEnd = row['interval_end']
     return flag
 
+#Testing script from early development
 def testScript():
     data = pd.read_csv(testfile)
     data = removeDiscrepencies(data)
     data.to_csv("assets/csv/testfile.csv")
 
+#run function for use by the frontend. Takes a CSV and a Boolean
 def runCleaner(file, annual):
     data = pd.read_csv(file)
     data = removeDiscrepencies(data, annual)
@@ -188,15 +206,13 @@ def runCleaner(file, annual):
     if(not verifyData(data)):
         raise DataCleaningError('Data not Properly Cleaned')
 
-    #if(reverse):
-    #    data = reverseDF(data)
-
 
     cleanData = data.to_csv(index=False)
 
     return cleanData
 
 
+#takes the data and sorts it into one calendar year from January -> December. "The Wrapper"
 def makeCalendarYear(df, dateColumn):
     # Ensure only 1 calendar year
     df[dateColumn] = pd.to_datetime(df[dateColumn])
@@ -222,6 +238,7 @@ def makeCalendarYear(df, dateColumn):
     return df
 
 
+#removes the zero values from our dataframe
 def removeZeroVals(df):
 
     currIndex = 0
@@ -230,6 +247,7 @@ def removeZeroVals(df):
     df = df.reset_index()
     for index, row in df.iterrows():
         
+        #verifies to grab from week ahead or week before
         if(currIndex < entries_per_week):
             copyIndex = index + entries_per_week
 
@@ -238,11 +256,12 @@ def removeZeroVals(df):
 
         if(row['interval_kWh'] == 0 and row['fwd_kWh'] == 0 and row['net_kWh'] == 0):
 
-            #this is for edge cases looking forward before the zeroes have been removed, if it is a zero a week ahead it jumps another week forward
+            #this is for edge cases looking forward before the zeroes have been removed, if it is a zero a week ahead it jumps another week forward. Should be minimal
             while(df.loc[copyIndex].interval_kWh == 0 and df.loc[copyIndex].fwd_kWh == 0 and df.loc[copyIndex].net_kWh == 0):
                 print("Edge case in removing zero values. Jumping forward an extra week for data fetching")
                 copyIndex = copyIndex + entries_per_week
 
+            #Replaces zero values from desired week
             print("Zero detected, copying from start time:", df.loc[copyIndex].interval_start, "for: ", row['interval_start'])
             df.at[index, 'interval_kWh'] = df.loc[copyIndex].interval_kWh
             df.at[index, 'fwd_kWh'] = df.loc[copyIndex].fwd_kWh
