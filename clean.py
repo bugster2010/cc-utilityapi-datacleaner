@@ -40,8 +40,9 @@ def removeDiscrepencies(df, annual):
     #setting data
     currHighestTime = datetime(year=1,month=1,day=1,hour=0,minute=0,second=0)
     df.reset_index()
+    #used for error checking purposes
+    intervalsCopied = 0
     
-        
     #begin for loop for iteration through data
     #index is given the int of the index and row is the data
     print("Removing time discrepencies")
@@ -116,8 +117,6 @@ def removeDiscrepencies(df, annual):
                 else:
                     intervalWhileClause = copyIntervalEnd != copyIntervalStart
 
-                #used for error checking purposes
-                intervalsCopied = 0
 
                 while(intervalWhileClause):
                     
@@ -206,6 +205,7 @@ def runCleaner(file, annual):
     if(not verifyData(data)):
         raise DataCleaningError('Data not Properly Cleaned')
 
+    data = data.drop('index', axis = 1)
 
     cleanData = data.to_csv(index=False)
 
