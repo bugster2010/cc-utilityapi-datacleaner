@@ -40,6 +40,7 @@ def removeDiscrepencies(df, annual):
     #setting data
     currHighestTime = datetime(year=1,month=1,day=1,hour=0,minute=0,second=0)
     df.reset_index()
+    firstRun = True
     #used for error checking purposes
     intervalsCopied = 0
     
@@ -49,6 +50,12 @@ def removeDiscrepencies(df, annual):
     for index, row in df.iterrows():
         prev = index - 1
         cleanRow = row
+
+        if firstRun:
+            firstRun = False
+            yearMax = int(row['interval_start'].strftime('%Y'))
+
+        
 
         #validate start time is 15 minutes from end time
         if(annual):
@@ -68,12 +75,15 @@ def removeDiscrepencies(df, annual):
         else:
             currHighestTest = cleanRow['interval_start']
 
+
         skipped = 0
         #validate there is no repeat
         if(currHighestTest < currHighestTime):
             #this effectively skips anything that starts before what we have already deemed has ended 
             print(currHighestTest, ' was skipped')
             skipped = skipped + 1
+
+            #This makes does error checking to ensure not too many are skipped
             if(skipped > created_error_max):
                 raise DataCleaningError('Skipped data has breached the cleaning error maximum')
             continue
@@ -123,10 +133,16 @@ def removeDiscrepencies(df, annual):
                     copy_curr = df.loc[copyInd].copy()
 
                     print("Copied data from:", df.loc[copyInd].interval_start, df.loc[copyInd].interval_end)
-                    copy_curr.interval_start = copyIntervalStart.strftime('%m/%d/%Y %H:%M')
-                    copy_curr.interval_end = (copyIntervalStart + timedelta(minutes = 15)).strftime('%m/%d/%Y %H:%M')
+                    if(annual):
+                        annualCopy = copyIntervalStart.replace(year=yearMax)
+                        copy_curr.interval_start = annualCopy.strftime('%m/%d/%Y %H:%M')
+                        copy_curr.interval_end = (annualCopy + timedelta(minutes = 15)).strftime('%m/%d/%Y %H:%M')
+                    else:
+                        copy_curr.interval_start = copyIntervalStart.strftime('%m/%d/%Y %H:%M')
+                        copy_curr.interval_end = (copyIntervalStart + timedelta(minutes = 15)).strftime('%m/%d/%Y %H:%M')
                 
                     copyIntervalStart += timedelta(minutes=15)
+
                     cleanDF.append(copy_curr)
                     copyInd += 1
 
@@ -141,15 +157,16 @@ def removeDiscrepencies(df, annual):
                         intervalWhileClause = copyIntervalEnd != copyIntervalStart
                     
         
-
+        if(annual):
+            cleanRow['interval_start'] = cleanRow['interval_start'].replace(year=yearMax)
+            cleanRow['interval_end'] = cleanRow['interval_end'].replace(year=yearMax)
         cleanDF.append(cleanRow)
-    print("Completed time corrections")
 
+    if(annual):
+        cleanDF[-1]['interval_end'] = cleanDF[-1]['interval_end'].replace(year=yearMax+1)
     print()
     print("Beginning Removing Zero Values")
     cleanDF = removeZeroVals(pd.DataFrame(cleanDF))
-    print("Completed")
-
 
     return cleanDF
 
@@ -202,6 +219,7 @@ def runCleaner(file, annual):
     data = pd.read_csv(file)
     data = removeDiscrepencies(data, annual)
 
+    
     if(not verifyData(data)):
         raise DataCleaningError('Data not Properly Cleaned')
 
