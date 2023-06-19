@@ -13,7 +13,7 @@ testfile = "assets/csv/raw.csv"
 class DataCleaningError(Exception):
     pass
 
-def removeDiscrepencies(df, annual):
+def removeDiscrepencies(df, annual, removeZero):
 
     # Check for missing column names, throw error if any are missing
     required_columns = ['interval_start', 'interval_end', 'interval_kWh', 'fwd_kWh', 'net_kWh']
@@ -164,9 +164,13 @@ def removeDiscrepencies(df, annual):
 
     if(annual):
         cleanDF[-1]['interval_end'] = cleanDF[-1]['interval_end'].replace(year=yearMax+1)
-    print()
-    print("Beginning Removing Zero Values")
-    cleanDF = removeZeroVals(pd.DataFrame(cleanDF))
+    
+    
+    if(removeZero):
+        print("Beginning Removing Zero Values")
+        cleanDF = removeZeroVals(pd.DataFrame(cleanDF))
+    else:
+        cleanDF = pd.DataFrame(cleanDF)
 
     return cleanDF
 
@@ -178,7 +182,7 @@ def reverseDF(df):
     df = df[::-1]
     return df
     
-def verifyData(df):
+def verifyData(df, zero):
     required_columns = ['interval_start', 'interval_end']
     missing_columns = set(required_columns) - set(df.columns)
     
@@ -191,9 +195,10 @@ def verifyData(df):
     prevEnd = None
     counter = 0
     for index, row in df.iterrows():
-        if(row['interval_kWh'] == 0 and row['fwd_kWh'] == 0 and row['net_kWh'] == 0):
-            print("Zero Discrepency Detected at start time: ", row['interval_start'])
-            flag = False
+        if(zero):
+            if(row['interval_kWh'] == 0):
+                print("Zero Discrepency Detected at start time: ", row['interval_start'])
+                flag = False
         if(prevEnd != None):
             if(prevEnd != row['interval_start'] and prevEnd - row['interval_start']!= timedelta(days = 365)):
 
@@ -215,15 +220,16 @@ def testScript():
     data.to_csv("assets/csv/testfile.csv")
 
 #run function for use by the frontend. Takes a CSV and a Boolean
-def runCleaner(file, annual):
+def runCleaner(file, annual, zero):
     data = pd.read_csv(file)
-    data = removeDiscrepencies(data, annual)
+    data = removeDiscrepencies(data, annual, zero)
 
     
-    if(not verifyData(data)):
+    if(not verifyData(data, zero)):
         raise DataCleaningError('Data not Properly Cleaned')
 
-    data = data.drop('index', axis = 1)
+    if 'index' in data.columns:
+        data = data.drop('index', axis = 1)
 
     cleanData = data.to_csv(index=False)
 
@@ -272,18 +278,17 @@ def removeZeroVals(df):
         else:
             copyIndex = index - entries_per_week
 
-        if(row['interval_kWh'] == 0 and row['fwd_kWh'] == 0 and row['net_kWh'] == 0):
+        if(row['interval_kWh'] == 0):
 
             #this is for edge cases looking forward before the zeroes have been removed, if it is a zero a week ahead it jumps another week forward. Should be minimal
-            while(df.loc[copyIndex].interval_kWh == 0 and df.loc[copyIndex].fwd_kWh == 0 and df.loc[copyIndex].net_kWh == 0):
+            while(df.loc[copyIndex].interval_kWh == 0):
                 print("Edge case in removing zero values. Jumping forward an extra week for data fetching")
                 copyIndex = copyIndex + entries_per_week
 
             #Replaces zero values from desired week
             print("Zero detected, copying from start time:", df.loc[copyIndex].interval_start, "for: ", row['interval_start'])
             df.at[index, 'interval_kWh'] = df.loc[copyIndex].interval_kWh
-            df.at[index, 'fwd_kWh'] = df.loc[copyIndex].fwd_kWh
-            df.at[index, 'net_kWh'] = df.loc[copyIndex].net_kWh
+            
 
         currIndex = currIndex + 1
 

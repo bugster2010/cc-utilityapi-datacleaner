@@ -31,6 +31,7 @@ def moduleInterface():
         selected_file = st.file_uploader("Upload a file")
 
         annual = st.checkbox('Annual Data')
+        zero = st.checkbox('Remove Zero Values')
 
         #reverse = st.checkbox("Reverse Data", value=False)
             # Button to start cleaning program
@@ -38,7 +39,7 @@ def moduleInterface():
             if selected_file is None:
                   st.error("Please select an input file.")
             else:
-                 clean_file = runCleaner(selected_file, annual)
+                 clean_file = runCleaner(selected_file, annual, zero)
                  
                  st.success("File Cleaned Successfully")
         
