@@ -6,7 +6,7 @@ from datetime import timedelta
 entries_per_week = 672 
 
 # allowed amount of created data. Should expect about 8 per year
-created_error_max = 16
+created_error_max = 25
 
 testfile = "assets/csv/raw.csv"
 
@@ -25,7 +25,6 @@ def removeDiscrepencies(df, annual, removeZero):
     #preparing data for cleaning
     df = reverseDF(df)
     if(annual):
-        created_error_max = 25
         df = makeCalendarYear(df, 'interval_start')
 
     # Convert the 'interval_start' and 'interval_end' columns to datetime objects
