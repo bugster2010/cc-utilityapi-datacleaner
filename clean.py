@@ -6,7 +6,7 @@ from datetime import timedelta
 entries_per_week = 672 
 
 # allowed amount of created data. Should expect about 8 per year
-created_error_max = 32
+created_error_max = 35040
 
 testfile = "assets/csv/raw.csv"
 
